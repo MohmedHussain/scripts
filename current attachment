@@ -1,0 +1,20 @@
+import oci
+
+# Set up the OCI config file
+config = oci.config.from_file()  # Uses default location ~/.oci/config
+
+# Initialize Blockstorage client
+blockstorage_client = oci.core.BlockstorageClient(config)
+
+# Volume OCID for which you want to get the current attachment
+volume_ocid = 'your_volume_ocid'  # Replace 'your_volume_ocid' with the volume OCID
+
+# List all attachments for the specified volume
+list_attachments_response = blockstorage_client.list_volume_attachments(volume_id=volume_ocid)
+
+if list_attachments_response.data:
+    current_attachment = list_attachments_response.data[0]  # Assuming only one attachment exists for the volume
+    current_attachment_ocid = current_attachment.id
+    print("Current attachment OCID:", current_attachment_ocid)
+else:
+    print("No attachments found for the volume.")
