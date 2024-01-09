@@ -1,0 +1,17 @@
+import oci
+
+# Set up the OCI config file
+config = oci.config.from_file()  # Uses default location ~/.oci/config
+
+# Initialize Blockstorage client
+blockstorage_client = oci.core.BlockstorageClient(config)
+
+# Define the detachment details
+volume_detach_details = oci.core.models.DetachVolumeDetails(
+    attachment_id='your_attachment_ocid'  # Replace 'your_attachment_ocid' with your attachment OCID
+)
+
+# Detach volume
+detach_response = blockstorage_client.detach_volume(volume_detach_details)
+
+print("Volume detached:", detach_response.data)
