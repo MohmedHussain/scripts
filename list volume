@@ -1,0 +1,24 @@
+import oci
+
+# Set up the OCI config file
+config = oci.config.from_file()  # Uses default location ~/.oci/config
+
+# Initialize Blockstorage client
+blockstorage_client = oci.core.BlockstorageClient(config)
+
+# Compartment OCID where your volume resides
+compartment_id = 'your_compartment_ocid'  # Replace 'your_compartment_ocid' with your compartment OCID
+
+# Volume display name for which you want to get the ID
+volume_display_name = 'YourVolumeDisplayName'  # Replace 'YourVolumeDisplayName' with the volume's display name
+
+# List volumes in the specified compartment
+list_volumes_response = blockstorage_client.list_volumes(compartment_id=compartment_id)
+
+for volume in list_volumes_response.data:
+    if volume.display_name == volume_display_name:
+        volume_id = volume.id
+        print(f"Volume ID for '{volume_display_name}': {volume_id}")
+        break
+else:
+    print(f"Volume '{volume_display_name}' not found in the compartment.")
