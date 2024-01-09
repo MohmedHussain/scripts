@@ -1,0 +1,34 @@
+import oci
+
+# Set up the OCI config file
+config = oci.config.from_file()  # Uses default location ~/.oci/config
+
+# Initialize Blockstorage client
+blockstorage_client = oci.core.BlockstorageClient(config)
+
+# Compartment OCID where your volumes reside
+compartment_id = 'your_compartment_ocid'  # Replace 'your_compartment_ocid' with your compartment OCID
+
+# Tag details to be applied to the untagged volumes
+tag_namespace = 'your_tag_namespace'  # Replace 'your_tag_namespace' with your desired tag namespace
+tag_key = 'your_tag_key'  # Replace 'your_tag_key' with your desired tag key
+tag_value = 'your_tag_value'  # Replace 'your_tag_value' with your desired tag value
+
+# List volumes in the specified compartment
+list_volumes_response = blockstorage_client.list_volumes(compartment_id=compartment_id)
+
+# Iterate through volumes without tags and apply tags
+for volume in list_volumes_response.data:
+    if not volume.freeform_tags:  # Check if volume has no tags
+        volume_id = volume.id
+        # Define the tag details to be applied
+        tag_details = {
+            "tag_namespace_id": tag_namespace,
+            "tags": {
+                tag_key: tag_value
+            }
+        }
+        
+        # Apply tags to the untagged volume
+        blockstorage_client.update_volume(volume_id=volume_id, update_volume_details=tag_details)
+        print(f"Volume {volume.display_name} tagged with '{tag_key}: {tag_value}'")
