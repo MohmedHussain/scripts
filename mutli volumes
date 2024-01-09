@@ -1,0 +1,25 @@
+import oci
+
+# Set up the OCI config file
+config = oci.config.from_file()  # Uses default location ~/.oci/config
+
+# Initialize Blockstorage client
+blockstorage_client = oci.core.BlockstorageClient(config)
+
+# List of volume OCIDs to attach
+volume_ocids = ['vol_ocid_1', 'vol_ocid_2', 'vol_ocid_3', 'vol_ocid_4']  # Replace with your volume OCIDs
+
+# Instance OCID
+instance_ocid = 'your_instance_ocid'  # Replace with your instance OCID
+
+for vol_ocid in volume_ocids:
+    volume_attachment_details = oci.core.models.AttachIScsiVolumeDetails(
+        instance_id=instance_ocid,
+        volume_id=vol_ocid,
+        display_name='AttachmentName'  # Replace with the name for the attachment
+    )
+
+    # Attach volume
+    attach_response = blockstorage_client.attach_volume(volume_attachment_details)
+
+    print(f"Volume {vol_ocid} attached:", attach_response.data)
