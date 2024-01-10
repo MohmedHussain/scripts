@@ -1,0 +1,79 @@
+import oci
+import paramiko
+import time
+
+# Set up the authentication details
+config = oci.config.from_file()
+block_storage_client = oci.core.BlockstorageClient(config)
+compute_client = oci.core.ComputeClient(config)
+
+# Define a list of block volume OCIDs for which you want to create images
+block_volume_ids = ['block_volume_ocid_1', 'block_volume_ocid_2', 'block_volume_ocid_3']
+target_instance_id = 'your_target_instance_ocid'
+
+# Iterate through each block volume ID
+for block_volume_id in block_volume_ids:
+    # Create a block volume backup (image) from the source volume
+    create_volume_backup_details = oci.core.models.CreateVolumeBackupDetails(
+        volume_id=block_volume_id,
+        display_name=f'MyVolumeBackup_{block_volume_id[-4:]}',  # Change this to your preferred backup name
+        compartment_id=config['tenancy']
+    )
+
+    backup_response = block_storage_client.create_volume_backup(create_volume_backup_details)
+    backup_id = backup_response.data.id
+
+    # Wait for the backup to become available (optional but recommended)
+    backup = block_storage_client.get_volume_backup(backup_id).data
+    if backup.lifecycle_state != oci.core.models.VolumeBackup.LIFECYCLE_STATE_AVAILABLE:
+        block_storage_client.get_volume_backup(backup_id, wait_for_states=[oci.core.models.VolumeBackup.LIFECYCLE_STATE_AVAILABLE])
+
+    print(f"Created backup with OCID: {backup_id}")
+
+    # Create a block volume from the backup (image)
+    create_volume_details = oci.core.models.CreateVolumeDetails(
+        compartment_id=config['tenancy'],
+        display_name=f'NewVolumeFromBackup_{block_volume_id[-4:]}',  # Change this to your preferred volume name
+        source_volume_backup_id=backup_id,
+        availability_domain='your_availability_domain',  # Replace with the desired availability domain
+        size_in_gbs=50  # Set the size of the new volume as needed
+    )
+
+    volume_response = block_storage_client.create_volume(create_volume_details)
+    new_volume_id = volume_response.data.id
+
+    # Wait for the new volume to become available (optional but recommended)
+    volume = block_storage_client.get_volume(new_volume_id).data
+    if volume.lifecycle_state != oci.core.models.Volume.LIFECYCLE_STATE_AVAILABLE:
+        block_storage_client.get_volume(new_volume_id, wait_for_states=[oci.core.models.Volume.LIFECYCLE_STATE_AVAILABLE])
+
+    print(f"Created new volume from backup with OCID: {new_volume_id}")
+
+    # Attach the newly created volume to the target instance
+    attach_volume_details = oci.core.models.AttachVolumeDetails(
+        instance_id=target_instance_id,
+        volume_id=new_volume_id
+    )
+
+    block_storage_client.attach_volume(attach_volume_details)
+
+    # Wait for the volume to be attached (optional but recommended)
+    block_storage_client.get_volume(new_volume_id, wait_for_states=[oci.core.models.Volume.LIFECYCLE_STATE_ATTACHED])
+
+    print(f"Attached new volume to instance with OCID: {target_instance_id}")
+
+    # SSH into the target instance and execute mount and unmount commands (Example using paramiko)
+    ssh_key_path = '/path/to/private/ssh/key'  # Replace with the path to your SSH private key file
+    ssh_username = 'your_ssh_username'  # Replace with the SSH username for the target instance
+    ssh_host = 'your_instance_public_ip'  # Replace with the public IP of your target instance
+
+    ssh_client = paramiko.SSHClient()
+    ssh_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+    private_key = paramiko.RSAKey.from_private_key_file(ssh_key_path)
+
+    ssh_client.connect(hostname=ssh_host, username=ssh_username, pkey=private_key)
+
+    # Example: Execute commands to mount the volume
+    stdin, stdout, stderr = ssh_client.exec_command(f'sudo mount /dev/xvdb /mnt/my_volume_{block_volume_id[-4:]}')  # Mount the new volume
+
+    ssh_client.close()
