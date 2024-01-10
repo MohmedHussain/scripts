@@ -1,0 +1,23 @@
+import oci
+
+# Set up the authentication details
+config = oci.config.from_file()
+compute_client = oci.core.ComputeClient(config)
+
+# Define the OCID of the instance you want to inspect
+instance_id = 'your_instance_ocid'
+
+# Retrieve the details of the compute instance to retrieve the attached block volumes
+instance = compute_client.get_instance(instance_id).data
+
+# Retrieve the attached block volumes' details for the instance
+block_volume_attachments = compute_client.list_volume_attachments(instance_id).data
+
+# Display information about the attached block volumes
+for attachment in block_volume_attachments:
+    print(f"Attached Volume OCID: {attachment.volume_id}")
+    print(f"Attachment OCID: {attachment.id}")
+    # You can fetch more details about the attached volume if needed
+    volume_details = compute_client.get_volume(attachment.volume_id).data
+    print(f"Attached Volume Details: {volume_details}")
+    print("------------------------------")
